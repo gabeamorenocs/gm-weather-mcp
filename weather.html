@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GM-Weather Data</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #f4efe6; --panel: #ffffff; --ink: #1b1d24; --muted: #6b6a62;
+    --rule: #d9d2c4; --accent: #c0532a; --accent-soft: #e9b78f; --sky: #4a6d8c;
+    --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+    --sans: "Inter", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141618; --panel: #1d2024; --ink: #ece6d7; --muted: #8b8778;
+      --rule: #2a2e33; --accent: #e8824a; --accent-soft: #6b3a21; --sky: #7fa3c4;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--sans);
+    font-size: 15px; line-height: 1.5; padding: 32px 16px 48px;
+    font-variant-numeric: tabular-nums;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  header.masthead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1px solid var(--rule); padding-bottom: 14px; margin-bottom: 28px;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .brand { font-family: var(--serif); font-size: clamp(32px, 6vw, 44px); line-height: 1; letter-spacing: -0.01em; }
+  .brand em { color: var(--accent); font-style: italic; }
+  .dateline { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+  form.search { display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .search input {
+    flex: 1 1 260px; min-width: 0; background: var(--panel); border: 1px solid var(--rule);
+    color: var(--ink); font: 500 15px var(--sans); padding: 12px 14px; border-radius: 2px; outline: none;
+  }
+  .search input:focus { border-color: var(--accent); }
+  .search button {
+    background: var(--ink); color: var(--bg); border: 1px solid var(--ink);
+    font: 600 14px var(--sans); padding: 12px 22px; cursor: pointer; border-radius: 2px; letter-spacing: 0.02em;
+  }
+  .search button:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .search button:disabled { opacity: 0.5; cursor: wait; }
+  .units {
+    display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 12px;
+    margin-bottom: 28px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.1em;
+    flex-wrap: wrap;
+  }
+  .units label { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .units input { accent-color: var(--accent); }
+  .shortcuts { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .shortcuts button {
+    background: transparent; color: var(--muted); border: 1px solid var(--rule); border-radius: 2px;
+    font: 500 11px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 10px; cursor: pointer;
+  }
+  .shortcuts button:hover { color: var(--ink); border-color: var(--ink); }
+  .error {
+    background: var(--accent-soft); color: var(--ink); border-left: 3px solid var(--accent);
+    padding: 12px 16px; font-size: 14px; margin-bottom: 28px;
+  }
+  .loading { color: var(--muted); font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; padding: 24px 0; }
+  .current {
+    background: var(--panel); border: 1px solid var(--rule); padding: 32px;
+    display: grid; grid-template-columns: 1fr auto; gap: 24px; margin-bottom: 36px; align-items: start;
+  }
+  .current .place { font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 8px; }
+  .current .temp { font-family: var(--serif); font-size: clamp(72px, 14vw, 128px); line-height: 0.9; letter-spacing: -0.03em; }
+  .current .temp .unit { font-size: 0.35em; color: var(--muted); margin-left: 4px; vertical-align: top; }
+  .current .conditions { font-family: var(--serif); font-size: clamp(22px, 3.5vw, 28px); font-style: italic; color: var(--sky); margin-top: 6px; }
+  .current .feels { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .stats { display: grid; grid-template-columns: 1fr; gap: 14px; font-family: var(--mono); font-size: 12px; min-width: 140px; }
+  .stat { border-top: 1px solid var(--rule); padding-top: 8px; }
+  .stat .k { color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; }
+  .stat .v { color: var(--ink); font-size: 15px; margin-top: 2px; font-weight: 500; }
+  h2.section { font-family: var(--serif); font-size: 28px; margin: 0 0 18px; letter-spacing: -0.01em; }
+  .forecast { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .day { background: var(--panel); padding: 18px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .day .dow { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; }
+  .day .cond { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--sky); overflow-wrap: break-word; min-height: 2.6em; }
+  .day .range { font-family: var(--serif); font-size: 26px; letter-spacing: -0.01em; display: flex; gap: 10px; align-items: baseline; margin-top: auto; }
+  .day .range .lo { color: var(--muted); }
+  .day .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; border-top: 1px dashed var(--rule); padding-top: 8px; margin-top: 4px; }
+  footer.foot { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 560px) {
+    .current { grid-template-columns: 1fr; padding: 22px; }
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div class="brand">GM-<em>Weather Data</em></div>
+    <div class="dateline" id="dateline">—</div>
+  </header>
+
+  <form class="search" id="form" autocomplete="off">
+    <input id="q" type="text" placeholder="City, state or country — e.g. San Francisco, California" aria-label="Location">
+    <button type="submit" id="go">Fetch</button>
+  </form>
+
+  <div class="units">
+    <label><input type="radio" name="unit" value="imperial" checked> °F / mph</label>
+    <label><input type="radio" name="unit" value="metric"> °C / km·h</label>
+    <div class="shortcuts" id="shortcuts"></div>
+  </div>
+
+  <div id="out"></div>
+
+  <footer class="foot">
+    <span>Data — Open-Meteo via local MCP server</span>
+    <span id="coords">—</span>
+  </footer>
+</div>
+
+<script>
+  const SHORTCUTS = ["San Francisco, California", "New York", "London", "Tokyo", "Reykjavik"];
+  const shortcutsEl = document.getElementById("shortcuts");
+  SHORTCUTS.forEach(s => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = s.split(",")[0];
+    b.addEventListener("click", () => { document.getElementById("q").value = s; run(s); });
+    shortcutsEl.appendChild(b);
+  });
+
+  const out = document.getElementById("out");
+  const coordsEl = document.getElementById("coords");
+  const dateline = document.getElementById("dateline");
+  dateline.textContent = new Date().toLocaleDateString(undefined, {weekday:"long", month:"long", day:"numeric", year:"numeric"}).toUpperCase();
+
+  function unit() { return document.querySelector('input[name="unit"]:checked').value; }
+  function compass(deg) {
+    const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+    return dirs[Math.round(deg / 22.5) % 16];
+  }
+
+  async function fetchForecast(location) {
+    const u = new URL("/api/forecast", location === "" ? location : window.location.origin);
+    u.searchParams.set("location", location);
+    u.searchParams.set("units", unit());
+    u.searchParams.set("days", "5");
+    const r = await fetch(u);
+    const j = await r.json().catch(() => ({error: "server returned non-JSON"}));
+    if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+    return j;
+  }
+
+  function render(data) {
+    const p = data.place;
+    const cur = data.current;
+    const d = data.daily;
+    const tUnit = data.units.temperature;
+    const wUnit = data.units.wind;
+
+    const placeLine = [p.name, p.admin1, p.country].filter(Boolean).join(", ");
+    coordsEl.textContent = Number(p.latitude).toFixed(3) + ", " + Number(p.longitude).toFixed(3);
+
+    const days = d.map((day, i) => {
+      const dt = new Date(day.date + "T12:00:00");
+      const dow = dt.toLocaleDateString(undefined, {weekday: "short"}).toUpperCase();
+      return `
+        <div class="day">
+          <div class="dow">${i===0 ? "TODAY" : dow}</div>
+          <div class="cond">${day.conditions}</div>
+          <div class="range">
+            <span class="hi">${Math.round(day.temp_max)}°</span>
+            <span class="lo">${Math.round(day.temp_min)}°</span>
+          </div>
+          <div class="meta">
+            <span>${day.precipitation_pct ?? 0}% rain</span>
+            <span>${Math.round(day.wind_max)} ${wUnit}</span>
+          </div>
+        </div>`;
+    }).join("");
+
+    out.innerHTML = `
+      <section class="current">
+        <div>
+          <div class="place">${placeLine}</div>
+          <div class="temp">${Math.round(cur.temperature)}<span class="unit">${tUnit}</span></div>
+          <div class="conditions">${cur.conditions}${cur.is_day ? "" : " · night"}</div>
+          <div class="feels">Feels like ${Math.round(cur.feels_like)}${tUnit}</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="k">Humidity</div><div class="v">${cur.humidity}%</div></div>
+          <div class="stat"><div class="k">Wind</div><div class="v">${Math.round(cur.wind_speed)} ${wUnit} ${compass(cur.wind_direction)}</div></div>
+          <div class="stat"><div class="k">Updated</div><div class="v">${new Date(cur.time).toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"})}</div></div>
+        </div>
+      </section>
+
+      <h2 class="section">The week ahead</h2>
+      <div class="forecast">${days}</div>
+    `;
+  }
+
+  async function run(name) {
+    if (!name) return;
+    const btn = document.getElementById("go");
+    btn.disabled = true;
+    out.innerHTML = `<div class="loading">Fetching conditions for ${name}…</div>`;
+    try {
+      const data = await fetchForecast(name);
+      render(data);
+      try { localStorage.setItem("weatherly:last", name); } catch(_) {}
+    } catch (e) {
+      out.innerHTML = `<div class="error"><strong>Couldn't fetch weather.</strong> ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    run(document.getElementById("q").value.trim());
+  });
+  document.querySelectorAll('input[name="unit"]').forEach(r => r.addEventListener("change", () => {
+    const q = document.getElementById("q").value.trim();
+    if (q) run(q);
+  }));
+
+  let initial = "San Francisco, California";
+  try { initial = localStorage.getItem("weatherly:last") || initial; } catch(_) {}
+  document.getElementById("q").value = initial;
+  run(initial);
+</script>
+</body>
+</html>

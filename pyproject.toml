@@ -1,0 +1,14 @@
+[project]
+name = "weather-mcp"
+version = "0.1.0"
+description = "Weather MCP server (Open-Meteo)"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=2.0.0",
+    "httpx>=0.27",
+    "aiohttp>=3.9",
+]
+
+[project.scripts]
+weather-mcp = "server:mcp.run"
+weather-ui = "http_server:main"
